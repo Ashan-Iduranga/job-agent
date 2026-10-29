@@ -1,0 +1,71 @@
+# Job sources. To add one: create agent/sources/<module>.py with a Source subclass
+# (set SOURCE_CLASS at the bottom), then add an entry here.
+#
+# status (checked 2026-10-27):
+#   ok       - scraped directly
+#   js_only  - jobs are rendered by JavaScript / an external ATS; not scraped,
+#              the web-search step looks for this company's internships instead
+#   blocked  - site refuses automated requests (403/429); left to web search
+#   broken   - URL is dead or redirects nowhere useful
+
+sources:
+  - name: topjobs
+    module: topjobs
+    enabled: true
+    status: ok
+    urls:
+      - https://www.topjobs.lk/applicant/vacancybyfunctionalarea.jsp?FA=SDQ   # IT-Sware/DB/QA/Web/Graphics/GIS
+      - https://www.topjobs.lk/applicant/vacancybyfunctionalarea.jsp?FA=ITT   # IT-Telecoms
+
+  - name: itpro            # found by the agent's web search; IT-only board, Crawl-delay 10
+    module: itpro
+    enabled: true
+    status: ok
+    urls: [https://itpro.lk/jobs/internship/]
+
+  - name: ikman            # no IT category; keyword searches, filter drops non-IT
+    module: ikman
+    enabled: true
+    status: ok
+    urls: [https://ikman.lk/en/ads/sri-lanka/jobs]
+    queries: [intern, trainee, software, developer]
+
+  - name: xpress           # React app, but it has a public JSON API (robots.txt allows all)
+    module: xpress
+    enabled: true
+    status: ok
+    company: XpressJobs
+    urls: [https://xpress.jobs/]
+    pages: 3                 # entry-level IT pages to read (20 jobs each)
+    keywords: [intern, trainee]
+
+  # --- Company career pages (module: careers, generic link scraper) ---
+  - name: wso2
+    module: careers
+    enabled: true
+    status: ok
+    company: WSO2
+    urls: [https://wso2.com/careers/]
+    link_pattern: 'wso2\.com/careers/\d+/'
+    title_selector: h5
+
+  - name: creative-software
+    module: careers
+    enabled: true
+    status: ok
+    company: Creative Software
+    urls: [https://www.creativesoftware.com/careers]
+    link_pattern: 'creativesoftware\.com/careers/[a-z0-9-]+/?$'
+
+  - {name: ifs,            module: careers, enabled: false, status: blocked, company: IFS,            urls: [https://www.ifs.com/about/careers]}          # 429 to bots
+  - {name: syscolabs,      module: careers, enabled: false, status: js_only, company: Sysco LABS,     urls: [https://syscolabs.lk/careers]}
+  - {name: 99x,            module: careers, enabled: false, status: js_only, company: 99x,            urls: [https://99x.io/careers]}
+  - {name: virtusa,        module: careers, enabled: false, status: js_only, company: Virtusa,        urls: [https://www.virtusa.com/careers]}
+  - {name: pearson-lanka,  module: careers, enabled: false, status: blocked, company: Pearson Lanka,  urls: [https://plc.pearson.com/en-GB/careers/]}   # 403
+  - {name: codegen,        module: careers, enabled: false, status: js_only, company: CodeGen,        urls: [https://codegen.net/careers]}                # redirects to codegen.co.uk, no listings in HTML
+  - {name: hsenid,         module: careers, enabled: false, status: broken,  company: hSenid,         urls: [https://www.hsenidmobile.com/careers]}       # bad redirect (DNS error)
+  - {name: calcey,         module: careers, enabled: false, status: js_only, company: Calcey,         urls: [https://calcey.com/careers/]}
+
+# Never scraped (terms forbid it). The web-search step also skips these domains.
+blocked_domains:
+  - linkedin.com

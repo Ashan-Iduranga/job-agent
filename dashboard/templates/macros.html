@@ -1,0 +1,84 @@
+{% macro score_badge(score) -%}
+  {%- if score is none -%}
+    <span class="inline-flex items-center h-7 px-2 rounded-md border border-dashed border-line text-xs text-ink2" title="Not ranked yet">Unranked</span>
+  {%- elif score >= 75 -%}
+    <span class="inline-flex items-center justify-center h-7 min-w-[2.75rem] px-2 rounded-md bg-accent text-on-accent text-xs font-semibold" title="Match score">{{ score }}</span>
+  {%- elif score >= 50 -%}
+    <span class="inline-flex items-center justify-center h-7 min-w-[2.75rem] px-2 rounded-md border border-accent text-accent text-xs font-semibold" title="Match score">{{ score }}</span>
+  {%- else -%}
+    <span class="inline-flex items-center justify-center h-7 min-w-[2.75rem] px-2 rounded-md border border-line text-ink2 text-xs" title="Match score">{{ score }}</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro deadline_text(j) -%}
+  {%- if j.days_left is none -%}<span class="text-ink2">No deadline listed</span>
+  {%- elif j.days_left < 0 -%}<span class="text-ink2">Closed {{ j.deadline }}</span>
+  {%- elif j.days_left == 0 -%}<span class="text-bad font-semibold">Closes today</span>
+  {%- elif j.closing_soon -%}<span class="text-bad font-semibold">Closes in {{ j.days_left }} day{{ 's' if j.days_left != 1 }}</span>
+  {%- else -%}<span class="text-ink2">Closes {{ j.deadline }}</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro job_card(j) %}
+<li class="rounded-lg border bg-surface p-4 {{ 'border-accent' if j.is_new else 'border-line' }}" data-job="{{ j.id }}">
+  <div class="flex items-start gap-3">
+    <div class="shrink-0 pt-0.5">{{ score_badge(j.score) }}</div>
+    <div class="flex-1 min-w-0">
+      <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <h3 class="font-semibold leading-snug break-words">{{ j.title }}</h3>
+        {% if j.is_new %}<span class="text-xs font-semibold text-accent">New</span>{% endif %}
+        {% if j.status == 'saved' %}<span class="inline-block w-2 h-2 rounded-full bg-pin" title="Saved"></span>{% endif %}
+      </div>
+      <p class="text-xs text-ink2 mt-0.5 break-words">
+        {{ j.company }}{% if j.location %} · {{ j.location }}{% endif %} · {{ deadline_text(j) }} · <span>{{ j.source }}</span>
+      </p>
+      {% if j.reason %}<p class="text-xs mt-2">{{ j.reason }}</p>{% endif %}
+      {% if j.skills %}
+      <ul class="flex flex-wrap gap-1 mt-2" aria-label="Matched skills">
+        {% for s in j.skills %}<li class="px-2 py-0.5 rounded bg-accent-soft text-xs">{{ s }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+      <div class="flex flex-wrap items-center gap-2 mt-3">
+        <a href="{{ j.url }}" target="_blank" rel="noopener" class="h-8 px-3 inline-flex items-center rounded-md border border-line text-xs hover:border-accent hover:text-accent">Open posting</a>
+        <label class="sr-only" for="st-{{ j.id }}">Status</label>
+        <select id="st-{{ j.id }}" class="js-status h-8 px-2 rounded-md border border-line text-xs">
+          {% for k, v in statuses.items() %}<option value="{{ k }}" {{ 'selected' if j.status == k }}>{{ v }}</option>{% endfor %}
+        </select>
+        <details class="js-notes-wrap text-xs" {{ 'open' if j.notes }}>
+          <summary class="cursor-pointer text-ink2 hover:text-ink h-8 inline-flex items-center px-1">Notes</summary>
+          <textarea class="js-notes mt-2 w-full sm:w-96 min-h-[72px] p-2 rounded-md border border-line text-xs" placeholder="Contact, interview date, what you sent…">{{ j.notes or '' }}</textarea>
+          <span class="js-saved text-ink2 ml-1" aria-live="polite"></span>
+        </details>
+      </div>
+    </div>
+  </div>
+</li>
+{% endmacro %}
+
+{% macro run_strip(run) %}
+<section id="run-strip" class="rounded-lg border border-line bg-surface px-4 py-3 mb-5 text-xs flex flex-wrap items-center gap-x-4 gap-y-2" aria-live="polite">
+  {% if not run %}
+    <span class="text-ink2">No runs yet. Press Run now, or wait for the 8:00 / 18:00 schedule.</span>
+  {% else %}
+    <span>
+      <span class="font-semibold">Last run</span>
+      <span class="text-ink2">{{ run.started.replace('T', ' ')[:16] }}</span>
+      {% if run.running %}<span class="text-accent font-semibold">· running…</span>
+      {% elif run.state == 'ok' %}<span class="text-ok">· ok</span>
+      {% elif run.state == 'partial' %}<span class="text-bad">· some sources failed</span>
+      {% else %}<span class="text-bad">· failed</span>{% endif %}
+      {% if not run.running %}<span class="text-ink2">· {{ run.new_count }} new</span>{% endif %}
+    </span>
+    <span class="flex flex-wrap gap-1.5">
+      {% for name, r in run.sources.items() %}
+        <span class="px-2 py-0.5 rounded border {{ 'border-bad text-bad bg-bad-soft' if r.error else 'border-line text-ink2' }}"
+              title="{{ r.error or ('found ' ~ r.found ~ ', kept ' ~ r.kept) }}">{{ name }}{% if not r.error %} {{ r.kept }}{% else %} failed{% endif %}</span>
+      {% endfor %}
+    </span>
+    {% if run.message %}<span class="text-bad w-full">{{ run.message }}</span>{% endif %}
+    {% if stats is defined and stats.unranked %}
+      <button id="rerank" type="button" class="ml-auto text-accent hover:underline">Rank {{ stats.unranked }} unranked</button>
+    {% endif %}
+  {% endif %}
+</section>
+{% endmacro %}

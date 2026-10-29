@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% from "macros.html" import job_card, run_strip with context %}
+{% block body %}
+<div class="mx-auto max-w-5xl px-4 sm:px-8 py-6 sm:py-8">
+
+  <header class="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <div>
+      <h1 class="text-xl font-semibold">Internship radar</h1>
+      <p class="text-xs text-ink2">New IT internships, ranked against your profile</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="theme-toggle" type="button" class="h-9 px-3 rounded-md border border-line text-xs text-ink2 hover:text-ink" aria-label="Toggle dark mode">Theme</button>
+      <button id="run-now" type="button" class="h-9 px-4 rounded-md bg-accent text-on-accent text-xs font-semibold hover:opacity-90 disabled:opacity-50"
+        {% if run and run.running %}disabled{% endif %}>{% if run and run.running %}Running…{% else %}Run now{% endif %}</button>
+    </div>
+  </header>
+
+  <nav class="flex gap-1 border-b border-line mb-6 overflow-x-auto overflow-y-hidden" aria-label="Views">
+    {% for key, label in [("all","All jobs"),("saved","Saved"),("applied","Applied"),("expired","Expired")] %}
+      <a href="{{ '/' if key == 'all' else '/' ~ key }}"
+         class="px-3 py-2 border-b-2 text-xs whitespace-nowrap {{ 'border-accent text-ink font-semibold' if tab == key else 'border-transparent text-ink2 hover:text-ink' }}">
+        {{ label }} <span class="text-ink2 font-normal">{{ counts[key] }}</span></a>
+    {% endfor %}
+  </nav>
+
+  {% if tab == "all" %}
+  <section class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4" aria-label="Summary">
+    {% for label, value, note in [
+        ("New since last visit", stats.new, ""),
+        ("Active", stats.active, ""),
+        ("Closing within 7 days", stats.closing, ""),
+        ("Applied", stats.applied, "")] %}
+      <div class="rounded-lg border border-line bg-surface p-4">
+        <div class="text-xs text-ink2">{{ label }}</div>
+        <div class="text-xl font-semibold mt-1 {{ 'text-bad' if label.startswith('Closing') and value else '' }}">{{ value }}</div>
+      </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  {{ run_strip(run) }}
+
+  {% if tab != "applied" %}
+  <form method="get" class="flex flex-wrap gap-2 items-end mb-5" id="filters">
+    <label class="flex-1 min-w-[180px]"><span class="sr-only">Keyword</span>
+      <input name="q" value="{{ f.q }}" placeholder="Search title, company, reason…" class="w-full h-9 px-3 rounded-md border border-line text-xs"></label>
+    <select name="source" class="h-9 px-2 rounded-md border border-line text-xs" aria-label="Source">
+      <option value="">All sources</option>
+      {% for s in sources %}<option value="{{ s }}" {{ 'selected' if f.source == s }}>{{ s }}</option>{% endfor %}
+    </select>
+    <select name="min_score" class="h-9 px-2 rounded-md border border-line text-xs" aria-label="Minimum score">
+      <option value="">Any score</option>
+      {% for s in [80, 60, 40] %}<option value="{{ s }}" {{ 'selected' if f.min_score == s }}>{{ s }}+</option>{% endfor %}
+    </select>
+    <input name="location" value="{{ f.location }}" placeholder="Location" aria-label="Location" class="w-28 h-9 px-3 rounded-md border border-line text-xs">
+    <select name="status" class="h-9 px-2 rounded-md border border-line text-xs" aria-label="Status">
+      <option value="">Any status</option>
+      {% for k, v in statuses.items() %}<option value="{{ k }}" {{ 'selected' if f.status == k }}>{{ v }}</option>{% endfor %}
+    </select>
+    <select name="sort" class="h-9 px-2 rounded-md border border-line text-xs" aria-label="Sort">
+      <option value="score" {{ 'selected' if f.sort == 'score' }}>Sort: best match</option>
+      <option value="deadline" {{ 'selected' if f.sort == 'deadline' }}>Sort: deadline</option>
+      <option value="found" {{ 'selected' if f.sort == 'found' }}>Sort: newest</option>
+    </select>
+    <button class="h-9 px-3 rounded-md border border-line text-xs text-ink hover:border-accent">Apply</button>
+    {% if filtered %}<a href="?" class="h-9 px-2 inline-flex items-center text-xs text-accent hover:underline">Clear</a>{% endif %}
+  </form>
+  {% endif %}
+
+  {% if tab == "applied" %}
+    {% include "applied.html" %}
+  {% elif jobs %}
+    <ul class="flex flex-col gap-3" role="list">
+      {% for j in jobs %}{{ job_card(j) }}{% endfor %}
+    </ul>
+  {% else %}
+    <div class="rounded-lg border border-dashed border-line p-8 text-center">
+      {% if filtered %}
+        <p class="font-semibold">No jobs match these filters</p>
+        <p class="text-xs text-ink2 mt-1">Try a lower score or <a href="?" class="text-accent hover:underline">clear the filters</a>.</p>
+      {% elif tab == "saved" %}
+        <p class="font-semibold">Nothing saved yet</p>
+        <p class="text-xs text-ink2 mt-1">Set a job's status to Saved to keep it here.</p>
+      {% elif tab == "expired" %}
+        <p class="font-semibold">No expired jobs</p>
+        <p class="text-xs text-ink2 mt-1">Jobs move here the day after their deadline.</p>
+      {% else %}
+        <p class="font-semibold">No jobs yet</p>
+        <p class="text-xs text-ink2 mt-1">Press Run now to scrape the sources. The first run takes a minute or two.</p>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if tab == "all" and suggestions %}
+  <section class="mt-8 rounded-lg border border-line bg-surface p-4">
+    <h2 class="font-semibold">Suggested sources</h2>
+    <p class="text-xs text-ink2 mb-3">Sites the web search found vacancies on. Add one to sources.yaml to scrape it directly.</p>
+    <ul class="flex flex-col divide-y divide-line">
+      {% for s in suggestions %}
+      <li class="py-2 flex items-center justify-between gap-3 text-xs">
+        <a href="{{ s.example_url }}" target="_blank" rel="noopener" class="text-accent hover:underline truncate">{{ s.domain }}</a>
+        <span class="text-ink2 shrink-0">{{ s.hits }} hit{{ 's' if s.hits != 1 }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

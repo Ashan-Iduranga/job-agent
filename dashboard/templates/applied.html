@@ -1,0 +1,42 @@
+{% if jobs %}
+<div class="rounded-lg border border-line bg-surface overflow-x-auto">
+  <table class="w-full text-xs">
+    <thead class="text-left text-ink2 border-b border-line">
+      <tr>
+        <th class="px-4 py-3 font-medium">Role</th>
+        <th class="px-4 py-3 font-medium">Status</th>
+        <th class="px-4 py-3 font-medium">Deadline</th>
+        <th class="px-4 py-3 font-medium">Notes</th>
+        <th class="px-4 py-3 font-medium">Updated</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-line">
+      {% for j in jobs %}
+      <tr data-job="{{ j.id }}" class="align-top">
+        <td class="px-4 py-3 min-w-[200px]">
+          <a href="{{ j.url }}" target="_blank" rel="noopener" class="font-semibold hover:text-accent">{{ j.title }}</a>
+          <div class="text-ink2">{{ j.company }}</div>
+        </td>
+        <td class="px-4 py-3">
+          <label class="sr-only" for="st-{{ j.id }}">Status</label>
+          <select id="st-{{ j.id }}" class="js-status h-8 px-2 rounded-md border border-line text-xs">
+            {% for k, v in statuses.items() %}<option value="{{ k }}" {{ 'selected' if j.status == k }}>{{ v }}</option>{% endfor %}
+          </select>
+        </td>
+        <td class="px-4 py-3 whitespace-nowrap text-ink2">{{ j.deadline or '—' }}</td>
+        <td class="px-4 py-3 min-w-[220px]">
+          <textarea class="js-notes w-full min-h-[56px] p-2 rounded-md border border-line text-xs" placeholder="Interview date, contact…">{{ j.notes or '' }}</textarea>
+          <span class="js-saved text-ink2" aria-live="polite"></span>
+        </td>
+        <td class="px-4 py-3 whitespace-nowrap text-ink2">{{ (j.updated_at or '')[:10] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="rounded-lg border border-dashed border-line p-8 text-center">
+  <p class="font-semibold">No applications tracked yet</p>
+  <p class="text-xs text-ink2 mt-1">When you apply, set the job's status to Applied and it shows up here with your notes.</p>
+</div>
+{% endif %}
